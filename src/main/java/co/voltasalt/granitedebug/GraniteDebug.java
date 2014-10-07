@@ -1,6 +1,8 @@
 package co.voltasalt.granitedebug;
 
+import groovy.lang.GroovyRuntimeException;
 import org.apache.commons.lang3.StringUtils;
+import org.codehaus.groovy.control.CompilationFailedException;
 import org.granitemc.granite.api.command.Command;
 import org.granitemc.granite.api.command.CommandInfo;
 import org.granitemc.granite.api.plugin.Plugin;
@@ -31,7 +33,22 @@ public class GraniteDebug {
         try {
             info.getCommandSender().sendMessage(String.valueOf(engine.eval(StringUtils.join(info.getArgs(), " "))));
         } catch (ScriptException e) {
-            e.printStackTrace();
+            handleError(e, info);
+        }
+    }
+
+    public void handleError(Throwable t, CommandInfo info) {
+        if (t instanceof ScriptException) {
+            handleError(t.getCause(), info);
+        } else if (t instanceof GroovyRuntimeException) {
+            GroovyRuntimeException gre = (GroovyRuntimeException) t;
+            if (gre.getNode() != null) {
+                info.getCommandSender().sendMessage("(" + gre.getNode().getLineNumber() + ";" + gre.getNode().getColumnNumber() + ") " + gre.getMessageWithoutLocationText());
+            } else {
+                info.getCommandSender().sendMessage(gre.getMessage());
+            }
+        } else {
+            info.getCommandSender().sendMessage(t.getMessage());
         }
     }
 }
